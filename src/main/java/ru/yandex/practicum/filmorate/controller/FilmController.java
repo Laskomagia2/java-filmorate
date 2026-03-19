@@ -3,6 +3,7 @@ package ru.yandex.practicum.filmorate.controller;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
+import ru.yandex.practicum.filmorate.exceptions.NotFoundException;
 import ru.yandex.practicum.filmorate.exceptions.ValidationException;
 import ru.yandex.practicum.filmorate.model.Film;
 
@@ -41,7 +42,8 @@ public class FilmController {
             filmUpdater(films.get(film.getId()), film.getName(),
                     film.getDescription(), film.getReleaseDate(), film.getDuration());
         } else {
-            prepareFilm(film);
+            log.error("Film not found");
+            throw new NotFoundException("Film "+ film.getId() + " not found");
         }
         log.info("Film {} inserted", film.getName());
         return films.get(film.getId());
@@ -60,7 +62,7 @@ public class FilmController {
             log.error("Validation error: releaseDate must not be before 28.12.1895");
             throw new ValidationException("releaseDate must not be before 28.12.1895");
         }
-        if (film.getDuration().toMillis() < 1) {
+        if (film.getDuration() == null || film.getDuration() < 1) {
             log.error("Validation error: Duration must not be less than zero");
             throw new ValidationException("Duration must not be less than zero");
         }
@@ -76,7 +78,7 @@ public class FilmController {
     }
 
     private void filmUpdater(Film film, String newName,
-                    String newDescription, LocalDate newReleaseDate, Duration newDuration) {
+                    String newDescription, LocalDate newReleaseDate, Integer newDuration) {
         if (newName != null && !newName.isBlank()) {
             film.setName(newName);
         }
