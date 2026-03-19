@@ -89,7 +89,7 @@ class FilmorateApplicationUserControllerTests {
 		User user = new User();
 		user.setEmail("invalidEmail"); // без "@"
 		user.setLogin("login");
-		user.setName("Name");
+		user.setName("Name1");
 		user.setBirthday(LocalDate.of(2027, 1, 1));
 
 		HttpHeaders headers = new HttpHeaders();
