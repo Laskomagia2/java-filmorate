@@ -91,7 +91,7 @@ class FilmorateApplicationFilmControllerTests {
     @Test
     void shouldReturnBadRequestWhenDurationAndDateInvalid() {
         Film testFilm = new Film();
-        testFilm.setName("testName");
+        testFilm.setName("testName1");
         testFilm.setDescription("testDescription");
         testFilm.setReleaseDate(LocalDate.of(1800, 11, 1));
         testFilm.setDuration(0);
