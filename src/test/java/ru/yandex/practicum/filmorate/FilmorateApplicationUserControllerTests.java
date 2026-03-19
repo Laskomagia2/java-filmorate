@@ -23,7 +23,6 @@ class FilmorateApplicationUserControllerTests {
 	private TestRestTemplate restTemplate;
 	private final String baseUrl = "/users";
 
-
 	@Test
 	void shouldAddUserAndGetUsers() {
 		User testUser = new User();
