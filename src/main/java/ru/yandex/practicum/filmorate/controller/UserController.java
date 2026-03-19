@@ -41,7 +41,7 @@ public class UserController {
             log.info("User {} inserted", user.getLogin());
         } else {
             log.error("User not found");
-            throw new NotFoundException("User "+ user.getId() + " not found");
+            throw new NotFoundException("User " + user.getId() + " not found");
         }
         return user;
     }
