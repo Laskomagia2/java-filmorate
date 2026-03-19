@@ -42,7 +42,7 @@ public class FilmController {
                     film.getDescription(), film.getReleaseDate(), film.getDuration());
         } else {
             log.error("Film not found");
-            throw new NotFoundException("Film "+ film.getId() + " not found");
+            throw new NotFoundException("Film " + film.getId() + " not found");
         }
         log.info("Film {} inserted", film.getName());
         return films.get(film.getId());
