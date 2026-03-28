@@ -3,7 +3,7 @@ package ru.yandex.practicum.filmorate.exceptions;
 import lombok.Getter;
 
 @Getter
-public class ParameterNotValidException extends RuntimeException{
+public class ParameterNotValidException extends RuntimeException {
 
     private String error;
 
