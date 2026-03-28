@@ -1,94 +1,74 @@
 package ru.yandex.practicum.filmorate.controller;
 
-import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
-import ru.yandex.practicum.filmorate.exceptions.NotFoundException;
-import ru.yandex.practicum.filmorate.exceptions.ValidationException;
 import ru.yandex.practicum.filmorate.model.Film;
+import ru.yandex.practicum.filmorate.service.FilmService;
+import ru.yandex.practicum.filmorate.storage.InMemoryFilmStorage;
 
-import java.time.LocalDate;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.Collection;
 
-@Slf4j
 @RestController
-@RequestMapping("/films")
+@RequestMapping ("/films")
 public class FilmController {
 
-    private final Map<Integer,Film> films = new HashMap<>();
+    private final InMemoryFilmStorage filmStorage;
 
-    private final AtomicInteger idCounter = new AtomicInteger(0);
+    private final FilmService filmService;
 
-    @GetMapping
-    public List<Film> getFilms() {
-        return List.copyOf(films.values());
+    public FilmController(InMemoryFilmStorage filmStorage, FilmService filmService) {
+        this.filmStorage = filmStorage;
+        this.filmService = filmService;
     }
 
+
+    @GetMapping
+    public Collection<Film> getFilms(@RequestParam(defaultValue = "10") Integer size,
+                                     @RequestParam(defaultValue = "0") Integer from,
+                                     @RequestParam(defaultValue = "default") String sort) {
+        return filmStorage.getFilms(size,from,sort);
+    }
+
+    //GET /films/popular?count={count}
+    @GetMapping ("/popular")
+    public Collection<Film> getTopFilms(@RequestParam(defaultValue = "10") Integer count) {
+        return filmService.getMostLikedFilms(count);
+    }
+
+    @GetMapping ("/{id}")
+    public Film getFilmById(@PathVariable Integer id) {
+        return filmStorage.getFilmById(id);
+    }
+
+    @ResponseStatus (HttpStatus.CREATED)
     @PostMapping
     public Film addFilm(@RequestBody Film film) {
-        validateFilm(film);
-        log.info("Film {} added", film.getName());
-        return prepareFilm(film);
+        return filmStorage.addFilm(film);
+    }
+
+    //PUT /films/{id}/like/{userId}
+    @PutMapping ("/{id}/like/{userId}")
+    public void likeFilm(@PathVariable(value = "id") Integer id,
+                         @PathVariable(value = "userId") Integer userId) {
+        filmService.likeFilm(userId, id);
     }
 
     @PutMapping
     public Film putFilm(@RequestBody Film film) {
-        validateFilm(film);
-        if (films.containsKey(film.getId())) {
-            filmUpdater(films.get(film.getId()), film.getName(),
-                    film.getDescription(), film.getReleaseDate(), film.getDuration());
-        } else {
-            log.error("Film not found");
-            throw new NotFoundException("Film " + film.getId() + " not found");
-        }
-        log.info("Film {} inserted", film.getName());
-        return films.get(film.getId());
+        return filmStorage.putFilm(film);
     }
 
-    private void validateFilm(Film film) {
-        if (film.getName().isBlank()) {
-            log.error("Validation error: Name must not be empty");
-            throw new ValidationException("Name must not be empty");
-        }
-        if (film.getDescription().length() > 200) {
-            log.error("Validation error: Description must be less than 200 chars");
-            throw new ValidationException("Description must be less than 200 chars");
-        }
-        if (film.getReleaseDate().isBefore(LocalDate.of(1895,12,28))) {
-            log.error("Validation error: releaseDate must not be before 28.12.1895");
-            throw new ValidationException("releaseDate must not be before 28.12.1895");
-        }
-        if (film.getDuration() == null || film.getDuration() < 1) {
-            log.error("Validation error: Duration must not be less than zero");
-            throw new ValidationException("Duration must not be less than zero");
-        }
+    //DELETE /films/{id}/like/{userId}
+    @DeleteMapping ("/{id}/like/{userId}")
+    public void deleteLike(@PathVariable(value = "id") Integer id,
+                           @PathVariable(value = "userId") Integer userId) {
+        filmService.deleteLike(userId, id);
     }
 
-    private Film prepareFilm(Film film) {
-        if (film.getId() == null) {
-            int count = idCounter.incrementAndGet();
-            film.setId(count);
-        }
-        films.put(film.getId(), film);
-        return films.get(film.getId());
+    @DeleteMapping ("/{id}")
+    public void deleteFilm(@PathVariable Integer id) {
+        filmStorage.removeFilm(id);
     }
 
-    private void filmUpdater(Film film, String newName,
-                    String newDescription, LocalDate newReleaseDate, Integer newDuration) {
-        if (newName != null && !newName.isBlank()) {
-            film.setName(newName);
-        }
-        if (newDescription != null && !newDescription.isBlank()) {
-            film.setDescription(newDescription);
-        }
-        if (newReleaseDate != null) {
-            film.setReleaseDate(newReleaseDate);
-        }
-        if (newDuration != null) {
-            film.setDuration(newDuration);
-        }
-    }
 }
