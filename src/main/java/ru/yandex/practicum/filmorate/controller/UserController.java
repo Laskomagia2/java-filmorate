@@ -4,7 +4,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.service.UserService;
-import ru.yandex.practicum.filmorate.storage.InMemoryUserStorage;
 
 import java.util.Collection;
 
@@ -12,23 +11,20 @@ import java.util.Collection;
 @RequestMapping("/users")
 public class UserController {
 
-    private final InMemoryUserStorage userStorage;
-
     private final UserService userService;
 
-    public UserController(InMemoryUserStorage userStorage, UserService userService) {
-        this.userStorage = userStorage;
+    public UserController(UserService userService) {
         this.userService = userService;
     }
 
     @GetMapping ({"/{id}"})
     public User getUserById(@PathVariable Integer id) {
-        return userStorage.getUserById(id);
+        return userService.getUserById(id);
     }
 
     @GetMapping
     public Collection<User> getUsers() {
-        return userStorage.getUsers();
+        return userService.getUsers();
     }
 
     //GET /users/{id}/friends
@@ -47,7 +43,7 @@ public class UserController {
     @ResponseStatus (HttpStatus.CREATED)
     @PostMapping
     public User addUser(@RequestBody User user) {
-        return userStorage.addUser(user);
+        return userService.addUser(user);
     }
 
     //PUT /users/{id}/friends/{friendId}
@@ -59,7 +55,7 @@ public class UserController {
 
     @PutMapping
     public User putUser(@RequestBody User user) {
-        return userStorage.putUser(user);
+        return userService.putUser(user);
     }
 
     //DELETE /users/{id}/friends/{friendId}
@@ -71,7 +67,7 @@ public class UserController {
 
     @DeleteMapping ("/{id}")
     public void deleteUser(@PathVariable Integer id) {
-        userStorage.removeUser(id);
+        userService.removeUser(id);
     }
 
 }

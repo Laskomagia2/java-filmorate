@@ -5,7 +5,6 @@ import org.springframework.web.bind.annotation.*;
 
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.service.FilmService;
-import ru.yandex.practicum.filmorate.storage.InMemoryFilmStorage;
 
 import java.util.Collection;
 
@@ -13,12 +12,9 @@ import java.util.Collection;
 @RequestMapping ("/films")
 public class FilmController {
 
-    private final InMemoryFilmStorage filmStorage;
-
     private final FilmService filmService;
 
-    public FilmController(InMemoryFilmStorage filmStorage, FilmService filmService) {
-        this.filmStorage = filmStorage;
+    public FilmController(FilmService filmService) {
         this.filmService = filmService;
     }
 
@@ -27,7 +23,7 @@ public class FilmController {
     public Collection<Film> getFilms(@RequestParam(defaultValue = "10") Integer size,
                                      @RequestParam(defaultValue = "0") Integer from,
                                      @RequestParam(defaultValue = "default") String sort) {
-        return filmStorage.getFilms(size,from,sort);
+        return filmService.getFilms(size,from,sort);
     }
 
     //GET /films/popular?count={count}
@@ -38,13 +34,13 @@ public class FilmController {
 
     @GetMapping ("/{id}")
     public Film getFilmById(@PathVariable Integer id) {
-        return filmStorage.getFilmById(id);
+        return filmService.getFilmById(id);
     }
 
     @ResponseStatus (HttpStatus.CREATED)
     @PostMapping
     public Film addFilm(@RequestBody Film film) {
-        return filmStorage.addFilm(film);
+        return filmService.addFilm(film);
     }
 
     //PUT /films/{id}/like/{userId}
@@ -56,7 +52,7 @@ public class FilmController {
 
     @PutMapping
     public Film putFilm(@RequestBody Film film) {
-        return filmStorage.putFilm(film);
+        return filmService.putFilm(film);
     }
 
     //DELETE /films/{id}/like/{userId}
@@ -68,7 +64,7 @@ public class FilmController {
 
     @DeleteMapping ("/{id}")
     public void deleteFilm(@PathVariable Integer id) {
-        filmStorage.removeFilm(id);
+        filmService.removeFilm(id);
     }
 
 }

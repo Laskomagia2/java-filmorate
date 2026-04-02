@@ -3,6 +3,8 @@ package ru.yandex.practicum.filmorate.service;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.storage.UserStorage;
 
@@ -39,6 +41,26 @@ public class UserService {
                 .getFriendsId()
                 .stream().filter(friendsId -> userStorage.getUserById(friendId).getFriendsId().contains(friendsId))
                 .map(userStorage::getUserById).toList();
+    }
+
+    public User getUserById(Integer id) {
+        return userStorage.getUserById(id);
+    }
+
+    public Collection<User> getUsers() {
+        return userStorage.getUsers();
+    }
+
+    public User addUser(User user) {
+        return userStorage.addUser(user);
+    }
+
+    public User putUser(User user) {
+        return userStorage.putUser(user);
+    }
+
+    public void removeUser(Integer id) {
+        userStorage.removeUser(id);
     }
 
 }
