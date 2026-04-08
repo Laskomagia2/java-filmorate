@@ -1,92 +1,73 @@
 package ru.yandex.practicum.filmorate.controller;
 
-import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
-import ru.yandex.practicum.filmorate.exceptions.NotFoundException;
-import ru.yandex.practicum.filmorate.exceptions.ValidationException;
 import ru.yandex.practicum.filmorate.model.User;
+import ru.yandex.practicum.filmorate.service.UserService;
 
-import java.time.LocalDate;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.Collection;
 
-@Slf4j
 @RestController
 @RequestMapping("/users")
 public class UserController {
-    private final Map<Integer, User> users = new HashMap<>();
 
-    private final AtomicInteger idCounter = new AtomicInteger(0);
+    private final UserService userService;
 
-    @GetMapping
-    public List<User> getUsers() {
-        return List.copyOf(users.values());
+    public UserController(UserService userService) {
+        this.userService = userService;
     }
 
+    @GetMapping ({"/{id}"})
+    public User getUserById(@PathVariable Integer id) {
+        return userService.getUserById(id);
+    }
+
+    @GetMapping
+    public Collection<User> getUsers() {
+        return userService.getUsers();
+    }
+
+    //GET /users/{id}/friends
+    @GetMapping ("/{id}/friends")
+    public Collection<User> getUserFriends(@PathVariable(value = "id") Integer id) {
+        return userService.getFriends(id);
+    }
+
+    //GET /users/{id}/friends/common/{otherId}
+    @GetMapping ("/{id}/friends/common/{otherId}")
+    public Collection<User> getMutualFriends(@PathVariable(value = "id") Integer id,
+                          @PathVariable(value = "otherId") Integer otherId) {
+        return userService.getMutualFriends(otherId, id);
+    }
+
+    @ResponseStatus (HttpStatus.CREATED)
     @PostMapping
     public User addUser(@RequestBody User user) {
-        validateUser(user);
-        log.info("User {} created", user.getLogin());
-        return prepareUser(user);
+        return userService.addUser(user);
+    }
+
+    //PUT /users/{id}/friends/{friendId}
+    @PutMapping ("/{id}/friends/{friendId}")
+    public void addFriend(@PathVariable(value = "id") Integer id,
+                          @PathVariable(value = "friendId") Integer friendId) {
+        userService.addFriend(id, friendId);
     }
 
     @PutMapping
     public User putUser(@RequestBody User user) {
-        validateUser(user);
-        if (users.containsKey(user.getId())) {
-            userUpdater(users.get(user.getId()), user.getName(),
-                    user.getLogin(), user.getBirthday());
-            log.info("User {} inserted", user.getLogin());
-        } else {
-            log.error("User not found");
-            throw new NotFoundException("User " + user.getId() + " not found");
-        }
-        return user;
+        return userService.putUser(user);
     }
 
-    private void validateUser(User user) {
-        if (user.getEmail().isBlank()) {
-            log.error("Validation error: Email must not be empty");
-            throw new ValidationException("Email must not be empty");
-        }
-        if (!user.getEmail().contains("@")) {
-            log.error("Validation error: Email must contains char '@'");
-            throw new ValidationException("Email must contains char '@'");
-        }
-        if (user.getLogin().isBlank() || user.getLogin().contains(" ")) {
-            log.error("Validation error: Login must not contains space chars or be blank");
-            throw new ValidationException("Login must not contains space chars or be blank");
-        }
-        if (user.getBirthday().isAfter(LocalDate.now())) {
-            log.error("Validation error: Birthday must not be after actual date");
-            throw new ValidationException("Birthday must not be after actual date");
-        }
+    //DELETE /users/{id}/friends/{friendId}
+    @DeleteMapping ("/{id}/friends/{friendId}")
+    public void removeFriend(@PathVariable(value = "id") Integer id,
+                             @PathVariable(value = "friendId") Integer friendId) {
+        userService.removeFriend(id, friendId);
     }
 
-    private User prepareUser(User user) {
-        if (user.getId() == null) {
-            int count = idCounter.incrementAndGet();
-            user.setId(count);
-        }
-        if (user.getName() == null) {
-            user.setName(user.getLogin());
-        }
-        users.put(user.getId(), user);
-        return users.get(user.getId());
+    @DeleteMapping ("/{id}")
+    public void deleteUser(@PathVariable Integer id) {
+        userService.removeUser(id);
     }
 
-    private void userUpdater(User user, String newName,
-                             String newLogin, LocalDate newBirthday) {
-        if (newName != null && !newName.isBlank()) {
-            user.setName(newName);
-        }
-        if (newLogin != null && !newLogin.isBlank()) {
-            user.setLogin(newLogin);
-        }
-        if (newBirthday != null) {
-            user.setBirthday(newBirthday);
-        }
-    }
 }

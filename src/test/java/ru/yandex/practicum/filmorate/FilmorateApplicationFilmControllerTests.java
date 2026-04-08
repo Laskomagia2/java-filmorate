@@ -11,6 +11,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.annotation.DirtiesContext;
 import ru.yandex.practicum.filmorate.model.Film;
+import ru.yandex.practicum.filmorate.model.User;
 
 import java.time.LocalDate;
 
@@ -23,18 +24,20 @@ class FilmorateApplicationFilmControllerTests {
     @Autowired
     private TestRestTemplate restTemplate;
     private final String baseUrl = "/films";
+    private final String usersUrl = "/users";
 
     @Order(1)
     @Test
     void shouldAddFilmAndGetFilm() {
-        Film testFilm = new Film();
-        testFilm.setName("testName");
-        testFilm.setDescription("testDescription");
-        testFilm.setReleaseDate(LocalDate.of(2000, 11, 1));
-        testFilm.setDuration(2);
+        Film testFilm = Film.builder()
+                .name("testName")
+                .description("testDescription")
+                .releaseDate(LocalDate.of(2000, 11, 1))
+                .duration(2)
+                .build();
 
         ResponseEntity<Film> postEntity = restTemplate.postForEntity(baseUrl, testFilm, Film.class);
-        assertEquals(200, postEntity.getStatusCodeValue());
+        assertEquals(201, postEntity.getStatusCodeValue());
         Film completeFilm = postEntity.getBody();
         assertNotNull(completeFilm);
         assertEquals("testDescription", completeFilm.getDescription());
@@ -51,28 +54,31 @@ class FilmorateApplicationFilmControllerTests {
 
     @Order(2)
     @Test
-    void shouldPutUser() {
-        Film testFilm1 = new Film();
-        testFilm1.setName("testName1");
-        testFilm1.setDescription("testDescription1");
-        testFilm1.setReleaseDate(LocalDate.of(2000, 11, 1));
-        testFilm1.setDuration(2);
+    void shouldPutFilm() {
+        Film testFilm1 = Film.builder()
+                .name("testName1")
+                .description("testDescription1")
+                .releaseDate(LocalDate.of(2000, 11, 1))
+                .duration(2)
+                .build();
 
-        Film testFilm2 = new Film();
-        testFilm2.setName("testName2");
-        testFilm2.setDescription("testDescription2");
-        testFilm2.setReleaseDate(LocalDate.of(2000, 10, 1));
-        testFilm2.setDuration(3);
+        Film testFilm2 = Film.builder()
+                .name("testName2")
+                .description("testDescription2")
+                .releaseDate(LocalDate.of(2000, 10, 1))
+                .duration(3)
+                .build();
 
         ResponseEntity<Film> postEntity = restTemplate.postForEntity(baseUrl, testFilm1, Film.class);
         ResponseEntity<Film> postEntity2 = restTemplate.postForEntity(baseUrl, testFilm2, Film.class);
 
-        Film testFilm2ch = new Film();
-        testFilm2ch.setId(postEntity2.getBody().getId());
-        testFilm2ch.setName("testName4");
-        testFilm2ch.setDescription("testDescription4");
-        testFilm2ch.setReleaseDate(LocalDate.of(2010, 9, 1));
-        testFilm2ch.setDuration(6);
+        Film testFilm2ch = Film.builder()
+                .id(postEntity2.getBody().getId())
+                .name("testName4")
+                .description("testDescription4")
+                .releaseDate(LocalDate.of(2010, 9, 1))
+                .duration(6)
+                .build();
 
         HttpHeaders headers = new HttpHeaders();
         HttpEntity<Film> request = new HttpEntity<>(testFilm2ch, headers);
@@ -90,18 +96,96 @@ class FilmorateApplicationFilmControllerTests {
     @Order(3)
     @Test
     void shouldReturnBadRequestWhenDurationAndDateInvalid() {
-        Film testFilm = new Film();
-        testFilm.setName("testName1");
-        testFilm.setDescription("testDescription");
-        testFilm.setReleaseDate(LocalDate.of(1800, 11, 1));
-        testFilm.setDuration(0);
+        Film testFilm = Film.builder()
+                .name("testName1")
+                .description("testDescription")
+                .releaseDate(LocalDate.of(1800, 11, 1))
+                .duration(0)
+                .build();
 
         HttpHeaders headers = new HttpHeaders();
         HttpEntity<Film> request = new HttpEntity<>(testFilm, headers);
 
         ResponseEntity<String> response = restTemplate.exchange(baseUrl, HttpMethod.POST, request, String.class);
 
-        assertEquals(500, response.getStatusCodeValue());
+        assertEquals(400, response.getStatusCodeValue());
+    }
+
+    @Test
+    void shouldOrderPopularFilmsByLikesCount() {
+        User userOne = User.builder()
+                .name("likeUser1")
+                .login("likeLogin1")
+                .email("like1@mail.ru")
+                .birthday(LocalDate.of(1990, 1, 1))
+                .build();
+        User userTwo = User.builder()
+                .name("likeUser2")
+                .login("likeLogin2")
+                .email("like2@mail.ru")
+                .birthday(LocalDate.of(1990, 2, 2))
+                .build();
+        Integer userId1 = restTemplate.postForEntity(usersUrl, userOne, User.class).getBody().getId();
+        Integer userId2 = restTemplate.postForEntity(usersUrl, userTwo, User.class).getBody().getId();
+
+        Film filmLessLikes = Film.builder()
+                .name("filmLess")
+                .description("d1")
+                .releaseDate(LocalDate.of(2000, 1, 1))
+                .duration(100)
+                .build();
+        Film filmMoreLikes = Film.builder()
+                .name("filmMore")
+                .description("d2")
+                .releaseDate(LocalDate.of(2001, 1, 1))
+                .duration(120)
+                .build();
+
+        Integer filmId1 = restTemplate.postForEntity(baseUrl, filmLessLikes, Film.class).getBody().getId();
+        Integer filmId2 = restTemplate.postForEntity(baseUrl, filmMoreLikes, Film.class).getBody().getId();
+
+        restTemplate.exchange(baseUrl + "/" + filmId1 + "/like/" + userId1, HttpMethod.PUT, null, Void.class);
+        restTemplate.exchange(baseUrl + "/" + filmId2 + "/like/" + userId1, HttpMethod.PUT, null, Void.class);
+        restTemplate.exchange(baseUrl + "/" + filmId2 + "/like/" + userId2, HttpMethod.PUT, null, Void.class);
+
+        ResponseEntity<Film[]> popular = restTemplate.getForEntity(baseUrl + "/popular", Film[].class);
+        assertEquals(200, popular.getStatusCodeValue());
+        Film[] popularFilms = popular.getBody();
+        assertNotNull(popularFilms);
+        assertEquals(2, popularFilms.length);
+        assertEquals(filmId2, popularFilms[0].getId());
+        assertEquals(filmId1, popularFilms[1].getId());
+    }
+
+    @Test
+    void shouldDeleteFilmLike() {
+        User user = User.builder()
+                .name("delLikeUser")
+                .login("delLikeLogin")
+                .email("delLike@mail.ru")
+                .birthday(LocalDate.of(1985, 5, 5))
+                .build();
+        Integer userId = restTemplate.postForEntity(usersUrl, user, User.class).getBody().getId();
+
+        Film film = Film.builder()
+                .name("filmDelLike")
+                .description("desc")
+                .releaseDate(LocalDate.of(1999, 9, 9))
+                .duration(90)
+                .build();
+        Integer filmId = restTemplate.postForEntity(baseUrl, film, Film.class).getBody().getId();
+
+        restTemplate.exchange(baseUrl + "/" + filmId + "/like/" + userId, HttpMethod.PUT, null, Void.class);
+        ResponseEntity<Film> afterLike = restTemplate.getForEntity(baseUrl + "/" + filmId, Film.class);
+        assertEquals(200, afterLike.getStatusCodeValue());
+        assertNotNull(afterLike.getBody());
+        assertTrue(afterLike.getBody().getUserLikes().contains(userId));
+
+        restTemplate.exchange(baseUrl + "/" + filmId + "/like/" + userId, HttpMethod.DELETE, null, Void.class);
+        ResponseEntity<Film> afterDelete = restTemplate.getForEntity(baseUrl + "/" + filmId, Film.class);
+        assertEquals(200, afterDelete.getStatusCodeValue());
+        assertNotNull(afterDelete.getBody());
+        assertFalse(afterDelete.getBody().getUserLikes().contains(userId));
     }
 
 }
