@@ -115,8 +115,8 @@ public class InMemoryFilmStorage implements FilmStorage {
     public Collection<GenreDto> getGenres() {
         Collection<GenreDto> result = new ArrayList<>();
         List<String> genres = Arrays.stream(Genere.values()).map(Enum::toString).toList();
-        for (int idx = 0; idx < genres.size(); idx ++) {
-            result.add(new GenreDto(idx+1, genres.get(idx)));
+        for (int idx = 0; idx < genres.size(); idx++) {
+            result.add(new GenreDto(idx + 1, genres.get(idx)));
         }
         return result;
     }
@@ -125,8 +125,8 @@ public class InMemoryFilmStorage implements FilmStorage {
     public Collection<RatingDto> getRatings() {
         Collection<RatingDto> result = new ArrayList<>();
         List<String> genres = Arrays.stream(RatingMpa.values()).map(Enum::toString).toList();
-        for (int idx = 0; idx < genres.size(); idx ++) {
-            result.add(new RatingDto(idx+1, genres.get(idx)));
+        for (int idx = 0; idx < genres.size(); idx++) {
+            result.add(new RatingDto(idx + 1, genres.get(idx)));
         }
         return result;
     }
