@@ -47,33 +47,24 @@ public class FilmDbStorage extends BaseDbStorage<Film> implements FilmStorage {
     private final String updateFilmQuery = "UPDATE films SET name = ?, description = ?, realise_date = ?, duration = ?, " +
     "rating_id = ? WHERE id = ?";
     private final String deleteFilmQuery = "DELETE FROM films WHERE id = ?";
-    private final String LIKE_FILM = "INSERT INTO users_liked_film(film_id, user_id)" +
-            "VALUES (?, ?)";
-    private final String FIND_USERS_LIKED_FILM = "SELECT user_id FROM users_liked_film WHERE film_id = ?";
-    private final String DELETE_LIKE = "DELETE FROM users_liked_film WHERE film_id = ? AND user_id = ?";
-    private final String FIND_GENRES_QUERY = "SELECT id, name FROM film_genres";
-    private final String FIND_RATING_QUERY = "SELECT id, name FROM film_ratings";
-    private static final String EXISTS_GENRE_QUERY = "SELECT COUNT(*) FROM film_genres WHERE id = ?";
-    private static final String EXISTS_RATING_QUERY = "SELECT COUNT(*) FROM film_ratings WHERE id = ?";
-    private static final String FIND_ALL_LIKED_SORTED_QUERY = """
-            SELECT 
-                    f.id, 
-                    f.name AS film_name, 
-                    f.description, 
-                    f.realise_date, 
-                    f.duration, 
-                    fr.id AS rating_id, 
-                    fr.name AS rating_name, 
-                    COALESCE(l.likes_count, 0) AS likes_count 
-                    FROM films f 
-                    LEFT JOIN film_ratings fr ON f.rating_id = fr.id 
-                    LEFT JOIN (
-                        SELECT film_id, COUNT(user_id) AS likes_count 
-                        FROM users_liked_film 
-                        GROUP BY film_id 
-                    ) l ON f.id = l.film_id 
-                    ORDER BY likes_count DESC, f.id ASC
-            """;
+    private final String likeFilmQuery = "INSERT INTO users_liked_film(film_id, user_id) VALUES (?, ?)";
+    private final String findUserLikedFilmQuery = "SELECT user_id FROM users_liked_film WHERE film_id = ?";
+    private final String deleteLikeQuery = "DELETE FROM users_liked_film WHERE film_id = ? AND user_id = ?";
+    private final String findGenresQuery = "SELECT id, name FROM film_genres";
+    private final String findRatingQuery = "SELECT id, name FROM film_ratings";
+    private static final String existsGenreQuery = "SELECT COUNT(*) FROM film_genres WHERE id = ?";
+    private static final String existsRatingQuery = "SELECT COUNT(*) FROM film_ratings WHERE id = ?";
+    private static final String findAllLinkedQuery = "SELECT f.id, f.name AS film_name, f.description, f.realise_date, " +
+    "f.duration, fr.id AS rating_id, fr.name AS rating_name, " +
+    "COALESCE(l.likes_count, 0) AS likes_count " +
+    "FROM films f " +
+    "LEFT JOIN film_ratings fr ON f.rating_id = fr.id " +
+    "LEFT JOIN (" +
+    "SELECT film_id, COUNT(user_id) AS likes_count " +
+    "FROM users_liked_film " +
+    "GROUP BY film_id " +
+    ") l ON f.id = l.film_id " +
+    "ORDER BY likes_count DESC, f.id ASC";
 
     @Override
     public Collection<Film> getFilms(Integer size, Integer from, String sort) {
@@ -94,7 +85,7 @@ public class FilmDbStorage extends BaseDbStorage<Film> implements FilmStorage {
                     .sorted(Comparator.comparing(Film::getReleaseDate).reversed()).toList();
             return sortedFilms.stream().skip(from).limit(size).toList();
         } else if (sort.equals("like")) {
-            List<Film> popularFilms = findMany(FIND_ALL_LIKED_SORTED_QUERY)
+            List<Film> popularFilms = findMany(findAllLinkedQuery)
                     .stream()
                     .skip(from)
                     .limit(size)
@@ -168,7 +159,7 @@ public class FilmDbStorage extends BaseDbStorage<Film> implements FilmStorage {
     @Override
     public void likeFilm(Integer filmId, Integer userId) {
         try {
-            int rowsAffected = jdbc.update(LIKE_FILM, filmId, userId);
+            int rowsAffected = jdbc.update(likeFilmQuery, filmId, userId);
 
             if (rowsAffected == 0) {
                 throw new ValidationException("Like error");
@@ -183,7 +174,7 @@ public class FilmDbStorage extends BaseDbStorage<Film> implements FilmStorage {
     @Override
     public void deleteLike(Integer filmId, Integer userId) {
         try {
-            boolean res = deleteWithTwoKeys(DELETE_LIKE, filmId, userId);
+            boolean res = deleteWithTwoKeys(deleteLikeQuery, filmId, userId);
             if (!res) {
                 throw new NotFoundException("Like not found");
             }
@@ -194,17 +185,17 @@ public class FilmDbStorage extends BaseDbStorage<Film> implements FilmStorage {
 
     @Override
     public Collection<Integer> getUserLikedFilm(Integer filmId) {
-       return jdbc.queryForList(FIND_USERS_LIKED_FILM, Integer.class, filmId);
+       return jdbc.queryForList(findUserLikedFilmQuery, Integer.class, filmId);
     }
 
     @Override
     public Collection<GenreDto> getGenres() {
-       return jdbc.query(FIND_GENRES_QUERY, new GenreMapper());
+       return jdbc.query(findGenresQuery, new GenreMapper());
     }
 
     @Override
     public Collection<RatingDto> getRatings() {
-        return jdbc.query(FIND_RATING_QUERY, new RatingMapper());
+        return jdbc.query(findRatingQuery, new RatingMapper());
     }
 
     private void validateFilm(Film film) {
@@ -231,7 +222,7 @@ public class FilmDbStorage extends BaseDbStorage<Film> implements FilmStorage {
         if (film.getGenres() != null) {
             for (GenreDto genre : film.getGenres()) {
                 Integer count = jdbc.queryForObject(
-                        EXISTS_GENRE_QUERY,
+                        existsGenreQuery,
                         Integer.class,
                         genre.getId()
                 );
@@ -246,7 +237,7 @@ public class FilmDbStorage extends BaseDbStorage<Film> implements FilmStorage {
         // Проверка рейтинга MPA
         if (film.getMpa() != null) {
             Integer count = jdbc.queryForObject(
-                    EXISTS_RATING_QUERY,
+                    existsRatingQuery,
                     Integer.class,
                     film.getMpa().getId()
             );
