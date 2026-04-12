@@ -27,34 +27,26 @@ public class FilmDbStorage extends BaseDbStorage<Film> implements FilmStorage {
         super(jdbc, mapper);
     }
 
-    private final String FIND_ALL_QUERY = """
-    SELECT f.id, f.name AS film_name, f.description, f.realise_date, f.duration, 
-    fr.id AS rating_id, fr.name AS rating_name, 
-    COUNT(l.user_id) AS likes_count 
-    FROM films AS f 
-    LEFT JOIN film_ratings AS fr ON f.rating_id = fr.id 
-    LEFT JOIN users_liked_film AS l ON f.id = l.film_id 
-    GROUP BY f.id, fr.id
-    """;
-    private final String FIND_BY_ID = """
-    SELECT f.id, f.name AS film_name, f.description, f.realise_date, f.duration, 
-    fr.id AS rating_id, fr.name AS rating_name, 
-    COUNT(l.user_id) AS likes_count 
-    FROM films AS f 
-    LEFT JOIN film_ratings AS fr ON f.rating_id = fr.id 
-    LEFT JOIN users_liked_film AS l ON f.id = l.film_id 
-    WHERE f.id = ? 
-    GROUP BY f.id, fr.id
-    """;
-    private final String INSERT_FILM_QUERY = """
-    INSERT INTO films(name, description, realise_date, duration, rating_id)
-    VALUES (?, ?, ?, ?, ?)
-    """;
-    private final String UPDATE_FILM_QUERY = """
-    UPDATE films SET name = ?, description = ?, realise_date = ?, duration = ?,
-    rating_id = ? WHERE id = ?
-    """;
-    private final String DELETE_FILM_QUERY = "DELETE FROM films WHERE id = ?";
+    private final String findAllQuery = "SELECT f.id, f.name AS film_name, f.description, f.realise_date, f.duration, " +
+    "fr.id AS rating_id, fr.name AS rating_name, " +
+    "COUNT(l.user_id) AS likes_count " +
+    "FROM films AS f " +
+    "LEFT JOIN film_ratings AS fr ON f.rating_id = fr.id " +
+    "LEFT JOIN users_liked_film AS l ON f.id = l.film_id " +
+    "GROUP BY f.id, fr.id";
+    private final String findByIdQuery = "SELECT f.id, f.name AS film_name, f.description, f.realise_date, f.duration, " +
+    "fr.id AS rating_id, fr.name AS rating_name, " +
+    "COUNT(l.user_id) AS likes_count " +
+    "FROM films AS f " +
+    "LEFT JOIN film_ratings AS fr ON f.rating_id = fr.id " +
+    "LEFT JOIN users_liked_film AS l ON f.id = l.film_id " +
+    "WHERE f.id = ? " +
+    "GROUP BY f.id, fr.id";
+    private final String insertFilmQuery = "INSERT INTO films(name, description, realise_date, duration, rating_id) " +
+    "VALUES (?, ?, ?, ?, ?)";
+    private final String updateFilmQuery = "UPDATE films SET name = ?, description = ?, realise_date = ?, duration = ?, " +
+    "rating_id = ? WHERE id = ?";
+    private final String deleteFilmQuery = "DELETE FROM films WHERE id = ?";
     private final String LIKE_FILM = "INSERT INTO users_liked_film(film_id, user_id)" +
             "VALUES (?, ?)";
     private final String FIND_USERS_LIKED_FILM = "SELECT user_id FROM users_liked_film WHERE film_id = ?";
@@ -85,7 +77,7 @@ public class FilmDbStorage extends BaseDbStorage<Film> implements FilmStorage {
 
     @Override
     public Collection<Film> getFilms(Integer size, Integer from, String sort) {
-        List<Film> films = findMany(FIND_ALL_QUERY).stream().toList();
+        List<Film> films = findMany(findAllQuery).stream().toList();
         setGenresForFilms(films);
         if (size < 0) {
             throw new ParameterNotValidException("size", "size must not be less than 0");
@@ -116,7 +108,7 @@ public class FilmDbStorage extends BaseDbStorage<Film> implements FilmStorage {
 
     @Override
     public Film getFilmById(Integer id) {
-        Film film = findOne(FIND_BY_ID, id)
+        Film film = findOne(findByIdQuery, id)
                 .orElseThrow(() -> new NotFoundException("Film " + id + " not found"));
         setGenresForFilms(List.of(film));
         return film;
@@ -128,7 +120,7 @@ public class FilmDbStorage extends BaseDbStorage<Film> implements FilmStorage {
         validateGenreAndRating(film);
 
         int id = insert(
-                INSERT_FILM_QUERY,
+                insertFilmQuery,
                 film.getName(),
                 film.getDescription(),
                 film.getReleaseDate(),
@@ -151,7 +143,7 @@ public class FilmDbStorage extends BaseDbStorage<Film> implements FilmStorage {
         validateGenreAndRating(film);
 
         update(
-                UPDATE_FILM_QUERY,
+                updateFilmQuery,
                 film.getName(),
                 film.getDescription(),
                 film.getReleaseDate(),
@@ -170,7 +162,7 @@ public class FilmDbStorage extends BaseDbStorage<Film> implements FilmStorage {
 
     @Override
     public void removeFilm(Integer id) {
-        delete(DELETE_FILM_QUERY, id);
+        delete(deleteFilmQuery, id);
     }
 
     @Override
