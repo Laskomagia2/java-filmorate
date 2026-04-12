@@ -22,7 +22,7 @@ public class InMemoryUserStorage implements UserStorage {
     private final InMemoryUserRelationsStorage relationsStorage;
 
     @Autowired
-    public InMemoryUserStorage (InMemoryUserRelationsStorage relationsStorage) {
+    public InMemoryUserStorage(InMemoryUserRelationsStorage relationsStorage) {
         this.relationsStorage = relationsStorage;
     }
 
