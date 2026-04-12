@@ -1,11 +1,16 @@
-package ru.yandex.practicum.filmorate.storage;
+package ru.yandex.practicum.filmorate.storage.memory;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import ru.yandex.practicum.filmorate.dto.GenreDto;
+import ru.yandex.practicum.filmorate.dto.RatingDto;
 import ru.yandex.practicum.filmorate.exceptions.NotFoundException;
 import ru.yandex.practicum.filmorate.exceptions.ParameterNotValidException;
 import ru.yandex.practicum.filmorate.exceptions.ValidationException;
 import ru.yandex.practicum.filmorate.model.Film;
+import ru.yandex.practicum.filmorate.model.Genere;
+import ru.yandex.practicum.filmorate.model.RatingMpa;
+import ru.yandex.practicum.filmorate.storage.FilmStorage;
 
 import java.time.LocalDate;
 import java.util.*;
@@ -16,6 +21,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class InMemoryFilmStorage implements FilmStorage {
 
     private final Map<Integer,Film> films = new HashMap<>();
+    private final Map<Integer, Set<Integer>> filmLikes = new HashMap<>();
 
     private final AtomicInteger idCounter = new AtomicInteger(0);
 
@@ -39,7 +45,7 @@ public class InMemoryFilmStorage implements FilmStorage {
             return sortedFilms.stream().skip(from).limit(size).toList();
         } else if (sort.equals("like")) {
             List<Film> sortedFilms = films.values().stream()
-                    .sorted(Comparator.comparing(Film::getLikesAmount).reversed()).toList();
+                    .sorted(Comparator.comparing(this::getLikesAmount).reversed()).toList();
             return sortedFilms.stream().limit(size).toList();
         } else {
             return films.values().stream().skip(from).limit(size).toList();
@@ -80,6 +86,49 @@ public class InMemoryFilmStorage implements FilmStorage {
             throw new NotFoundException("Film " + id + " not found");
         }
         films.remove(id);
+        filmLikes.remove(id);
+    }
+
+    @Override
+    public void likeFilm(Integer filmId, Integer userId) {
+        getFilmById(filmId);
+        Set<Integer> likes = filmLikes.computeIfAbsent(filmId, key -> new HashSet<>());
+        if (!likes.add(userId)) {
+            throw new ValidationException("User " + userId + " is already like film " + filmId);
+        }
+    }
+
+    @Override
+    public Collection<Integer> getUserLikedFilm(Integer filmId) {
+        getFilmById(filmId);
+        return new HashSet<>(filmLikes.getOrDefault(filmId, Collections.emptySet()));
+    }
+
+    @Override
+    public void deleteLike(Integer filmId, Integer userId) {
+        getFilmById(filmId);
+        Set<Integer> likes = filmLikes.getOrDefault(filmId, Collections.emptySet());
+        likes.remove(userId);
+    }
+
+    @Override
+    public Collection<GenreDto> getGenres() {
+        Collection<GenreDto> result = new ArrayList<>();
+        List<String> genres = Arrays.stream(Genere.values()).map(Enum::toString).toList();
+        for (int idx = 0; idx < genres.size(); idx ++) {
+            result.add(new GenreDto(idx+1, genres.get(idx)));
+        }
+        return result;
+    }
+
+    @Override
+    public Collection<RatingDto> getRatings() {
+        Collection<RatingDto> result = new ArrayList<>();
+        List<String> genres = Arrays.stream(RatingMpa.values()).map(Enum::toString).toList();
+        for (int idx = 0; idx < genres.size(); idx ++) {
+            result.add(new RatingDto(idx+1, genres.get(idx)));
+        }
+        return result;
     }
 
     private void validateFilm(Film film) {
@@ -106,10 +155,8 @@ public class InMemoryFilmStorage implements FilmStorage {
             int count = idCounter.incrementAndGet();
             film.setId(count);
         }
-        if (film.getUserLikes() == null) {
-            film.setUserLikes(new HashSet<>());
-        }
         films.put(film.getId(), film);
+        filmLikes.putIfAbsent(film.getId(), new HashSet<>());
         return films.get(film.getId());
     }
 
@@ -127,5 +174,9 @@ public class InMemoryFilmStorage implements FilmStorage {
         if (newDuration != null) {
             film.setDuration(newDuration);
         }
+    }
+
+    private int getLikesAmount(Film film) {
+        return filmLikes.getOrDefault(film.getId(), Collections.emptySet()).size();
     }
 }

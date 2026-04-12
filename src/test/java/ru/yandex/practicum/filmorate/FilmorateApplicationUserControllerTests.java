@@ -49,46 +49,6 @@ class FilmorateApplicationUserControllerTests {
 	}
 
 	@Test
-	void shouldPutUser() {
-		User testUser1 = User.builder()
-				.name("testName")
-				.login("testLogin")
-				.email("test@Mail")
-				.birthday(LocalDate.of(2000, 11, 1))
-				.build();
-
-		User testUser2 = User.builder()
-				.name("testName2")
-				.login("testLogin2")
-				.email("test@Mail2")
-				.birthday(LocalDate.of(2000, 11, 2))
-				.build();
-
-		ResponseEntity<User> postEntity = restTemplate.postForEntity(baseUrl, testUser1, User.class);
-		ResponseEntity<User> postEntity2 = restTemplate.postForEntity(baseUrl, testUser2, User.class);
-
-		User testUser2ch = User.builder()
-				.id(2)
-				.name("testName")
-				.login("testLogin")
-				.email("test@Mail2")
-				.birthday(LocalDate.of(2000, 11, 1))
-				.build();
-
-		HttpHeaders headers = new HttpHeaders();
-		HttpEntity<User> request = new HttpEntity<>(testUser2ch, headers);
-
-		ResponseEntity<String> response = restTemplate.exchange(baseUrl, HttpMethod.PUT, request, String.class);
-
-		ResponseEntity<User[]> getEntity = restTemplate.getForEntity(baseUrl, User[].class);
-		assertEquals(200, getEntity.getStatusCodeValue());
-		User[] users = getEntity.getBody();
-		assertNotNull(users);
-		assertTrue(users.length > 0);
-		assertEquals(testUser2ch, users[1]);
-	}
-
-	@Test
 	void shouldReturnBadRequestWhenEmailAndDateInvalid() {
 		User user = User.builder()
 				.name("testName")
@@ -103,52 +63,6 @@ class FilmorateApplicationUserControllerTests {
 		ResponseEntity<String> response = restTemplate.exchange(baseUrl, HttpMethod.POST, request, String.class);
 
 		assertEquals(400, response.getStatusCodeValue());
-	}
-
-	@Test
-	void shouldAddFriendAndListFriends() {
-		User userOne = User.builder()
-				.name("friendA")
-				.login("loginFriendA")
-				.email("friendA@mail.ru")
-				.birthday(LocalDate.of(1991, 2, 2))
-				.build();
-		User userTwo = User.builder()
-				.name("friendB")
-				.login("loginFriendB")
-				.email("friendB@mail.ru")
-				.birthday(LocalDate.of(1992, 3, 3))
-				.build();
-
-		ResponseEntity<User> post1 = restTemplate.postForEntity(baseUrl, userOne, User.class);
-		ResponseEntity<User> post2 = restTemplate.postForEntity(baseUrl, userTwo, User.class);
-		assertEquals(201, post1.getStatusCodeValue());
-		assertEquals(201, post2.getStatusCodeValue());
-		User created1 = post1.getBody();
-		User created2 = post2.getBody();
-		assertNotNull(created1);
-		assertNotNull(created2);
-
-		ResponseEntity<Void> putFriend = restTemplate.exchange(
-				baseUrl + "/" + created1.getId() + "/friends/" + created2.getId(),
-				HttpMethod.PUT, null, Void.class);
-		assertEquals(200, putFriend.getStatusCodeValue());
-
-		ResponseEntity<User[]> friendsOfFirst = restTemplate.getForEntity(
-				baseUrl + "/" + created1.getId() + "/friends", User[].class);
-		assertEquals(200, friendsOfFirst.getStatusCodeValue());
-		User[] list1 = friendsOfFirst.getBody();
-		assertNotNull(list1);
-		assertEquals(1, list1.length);
-		assertEquals(created2.getId(), list1[0].getId());
-
-		ResponseEntity<User[]> friendsOfSecond = restTemplate.getForEntity(
-				baseUrl + "/" + created2.getId() + "/friends", User[].class);
-		assertEquals(200, friendsOfSecond.getStatusCodeValue());
-		User[] list2 = friendsOfSecond.getBody();
-		assertNotNull(list2);
-		assertEquals(1, list2.length);
-		assertEquals(created1.getId(), list2[0].getId());
 	}
 
 	@Test

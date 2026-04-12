@@ -1,5 +1,7 @@
 package ru.yandex.practicum.filmorate.storage;
 
+import ru.yandex.practicum.filmorate.dto.GenreDto;
+import ru.yandex.practicum.filmorate.dto.RatingDto;
 import ru.yandex.practicum.filmorate.model.Film;
 
 import java.util.Collection;
@@ -14,4 +16,14 @@ public interface FilmStorage {
     public Film putFilm(Film newFilm);
 
     public void removeFilm(Integer id);
+
+    public void likeFilm(Integer filmId, Integer userId);
+
+    public Collection<Integer> getUserLikedFilm(Integer filmId);
+
+    public void deleteLike(Integer filmId, Integer userId);
+
+    public Collection<GenreDto> getGenres();
+
+    public Collection<RatingDto> getRatings();
 }

@@ -8,6 +8,8 @@ import ru.yandex.practicum.filmorate.exceptions.ValidationException;
 import ru.yandex.practicum.filmorate.exceptions.NotFoundException;
 import ru.yandex.practicum.filmorate.exceptions.ParameterNotValidException;
 
+import java.util.Arrays;
+
 @RestControllerAdvice ("ru.yandex.practicum.filmorate.controller")
 public class ErrorHandler {
     @ResponseStatus (HttpStatus.NOT_FOUND)
@@ -31,7 +33,7 @@ public class ErrorHandler {
     @ResponseStatus (HttpStatus.INTERNAL_SERVER_ERROR)
     @ExceptionHandler
     public ErrorResponses anyOtherError(final Throwable ex) {
-        return new ErrorResponses("Произошла непредвиденная ошибка.");
+        return new ErrorResponses("Произошла непредвиденная ошибка." + ex.getMessage() + Arrays.toString(ex.getStackTrace()));
     }
 }
 
