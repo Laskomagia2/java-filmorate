@@ -12,11 +12,9 @@ import ru.yandex.practicum.filmorate.storage.RelationStorage;
 @Component ("UserRelationsDbStorage")
 public class UserRelationsDbStorage extends BaseDbStorage<UserRelations> implements RelationStorage {
 
-    private final String INSERT_FRIENDSHIP = "INSERT INTO user_relations (requester_id, addressee_id) " +
+    private final String insertFriendship = "INSERT INTO user_relations (requester_id, addressee_id) " +
             "VALUES (?, ?)";
-    private final String REMOVE_FRIENDSHIP = "DELETE FROM user_relations " +
-            "WHERE requester_id = ? AND addressee_id = ?";
-    private final String CONFIRM_FRIENDSHIP = "UPDATE user_relations SET status = 2 " +
+    private final String removeFriendship = "DELETE FROM user_relations " +
             "WHERE requester_id = ? AND addressee_id = ?";
 
     public UserRelationsDbStorage(JdbcTemplate jdbc, @Qualifier ("RelationsMapper") RowMapper<UserRelations> mapper) {
@@ -25,7 +23,7 @@ public class UserRelationsDbStorage extends BaseDbStorage<UserRelations> impleme
 
     public void addFriend(Integer userId, Integer friendId) {
         jdbc.update(
-                INSERT_FRIENDSHIP,
+                insertFriendship,
                 userId,
                 friendId
         );
@@ -33,7 +31,7 @@ public class UserRelationsDbStorage extends BaseDbStorage<UserRelations> impleme
 
     public void removeFriend(Integer userId, Integer friendId) {
         jdbc.update(
-                REMOVE_FRIENDSHIP,
+                removeFriendship,
                 userId, friendId
         );
     }

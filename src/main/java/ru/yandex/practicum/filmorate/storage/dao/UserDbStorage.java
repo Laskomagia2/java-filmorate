@@ -20,25 +20,23 @@ public class UserDbStorage extends BaseDbStorage<User> implements UserStorage {
 
     UserRelationsDbStorage relationsDbStorage;
 
-    private final String FIND_ALL_QUERY = "SELECT * FROM users";
-    private final String FIND_BY_ID = "SELECT * " +
-            "FROM users " +
-            "WHERE id = ?";
-    private final String INSERT_USER_QUERY = "INSERT INTO users(email, login, user_name, birthday) " +
-            "VALUES (?, ?, ?, ?)";
-    private final String UPDATE_USER_QUERY = "UPDATE users SET email = ?, login = ?, user_name = ?, birthday = ? " +
-            "WHERE id = ?";
-    private final String DELETE_USER_QUERY = "DELETE FROM users WHERE id = ?";
-    private final String FIND_USER_FRIENDS = "SELECT u.* " +
-            "FROM users u " +
-            "JOIN user_relations r " +
-            "  ON r.addressee_id = u.id " +
-            "WHERE r.requester_id = ?";
+    private final String findAllQuery = "SELECT * FROM users";
+    private final String findFilmByIdQuery = "SELECT * FROM users WHERE id = ?";
+    private final String insertUserQuery = "INSERT INTO users(email, login, user_name, birthday) " +
+    "VALUES (?, ?, ?, ?)";
+    private final String updateUserQuery = "UPDATE users SET email = ?, login = ?, user_name = ?, birthday = ? " +
+    "WHERE id = ?";
+    private final String deleteUserQuery = "DELETE FROM users WHERE id = ?";
+    private final String findUserFriend = "SELECT u.* " +
+    "FROM users u " +
+    "JOIN user_relations r " +
+    "ON r.addressee_id = u.id " +
+    "WHERE r.requester_id = ?";
 
-    private final String FIND_MUTUAL_FRIENDS = "SELECT u.* " +
-            "FROM users u " +
-            "JOIN user_relations r1 ON r1.addressee_id = u.id AND r1.requester_id = ? " +
-            "JOIN user_relations r2 ON r2.addressee_id = u.id AND r2.requester_id = ?";
+    private final String findMutualFriends = "SELECT u.* " +
+    "FROM users u " +
+    "JOIN user_relations r1 ON r1.addressee_id = u.id AND r1.requester_id = ? " +
+    "JOIN user_relations r2 ON r2.addressee_id = u.id AND r2.requester_id = ?";
 
 
     public UserDbStorage(JdbcTemplate jdbc, @Qualifier ("UserMapper") RowMapper<User> mapper, UserRelationsDbStorage relationsDbStorage) {
@@ -48,13 +46,13 @@ public class UserDbStorage extends BaseDbStorage<User> implements UserStorage {
 
     @Override
     public Collection<User> getUsers() {
-        return findMany(FIND_ALL_QUERY);
+        return findMany(findAllQuery);
     }
 
     @Override
     public User getUserById(Integer id) {
-        if (findOne(FIND_BY_ID, id).isPresent()) {
-            return findOne(FIND_BY_ID, id).get();
+        if (findOne(findFilmByIdQuery, id).isPresent()) {
+            return findOne(findFilmByIdQuery, id).get();
         } else {
             throw new NotFoundException("User " + id + " not found");
         }
@@ -64,7 +62,7 @@ public class UserDbStorage extends BaseDbStorage<User> implements UserStorage {
     public User addUser(User user) {
         validateUser(user);
         int id = insert(
-                INSERT_USER_QUERY,
+                insertUserQuery,
                 user.getEmail(),
                 user.getLogin(),
                 user.getName(),
@@ -77,7 +75,7 @@ public class UserDbStorage extends BaseDbStorage<User> implements UserStorage {
     @Override
     public User putUser(User newUser) {
         update(
-                UPDATE_USER_QUERY,
+                updateUserQuery,
                 newUser.getEmail(),
                 newUser.getLogin(),
                 newUser.getName(),
@@ -89,7 +87,7 @@ public class UserDbStorage extends BaseDbStorage<User> implements UserStorage {
 
     @Override
     public void removeUser(Integer id) {
-        delete(DELETE_USER_QUERY, id);
+        delete(deleteUserQuery, id);
     }
 
     private void validateUser(User user) {
@@ -113,7 +111,7 @@ public class UserDbStorage extends BaseDbStorage<User> implements UserStorage {
 
     public Collection<User> getFriends(Integer id) {
         try {
-            return findMany(FIND_USER_FRIENDS, id);
+            return findMany(findUserFriend, id);
         } catch (EmptyResultDataAccessException ex) {
             throw new NotFoundException("Deleting friend error");
         }
@@ -121,7 +119,7 @@ public class UserDbStorage extends BaseDbStorage<User> implements UserStorage {
 
     public Collection<User> getMutualFriends(Integer friendId, Integer userId) {
         try {
-            return findMany(FIND_MUTUAL_FRIENDS, userId, friendId);
+            return findMany(findMutualFriends, userId, friendId);
         } catch (EmptyResultDataAccessException ex) {
             throw new NotFoundException("Deleting friend error");
         }
