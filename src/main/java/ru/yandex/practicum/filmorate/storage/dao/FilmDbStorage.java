@@ -3,6 +3,8 @@ package ru.yandex.practicum.filmorate.storage.dao;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Component;
@@ -16,8 +18,11 @@ import ru.yandex.practicum.filmorate.storage.FilmStorage;
 import ru.yandex.practicum.filmorate.storage.dao.mapper.GenreMapper;
 import ru.yandex.practicum.filmorate.storage.dao.mapper.RatingMapper;
 
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Component ("FilmDbStorage")
@@ -51,7 +56,9 @@ public class FilmDbStorage extends BaseDbStorage<Film> implements FilmStorage {
     private final String findUserLikedFilmQuery = "SELECT user_id FROM users_liked_film WHERE film_id = ?";
     private final String deleteLikeQuery = "DELETE FROM users_liked_film WHERE film_id = ? AND user_id = ?";
     private final String findGenresQuery = "SELECT id, name FROM film_genres";
+    private final String findGenreByIdQuery = "SELECT id, name FROM film_genres WHERE id = ?";
     private final String findRatingQuery = "SELECT id, name FROM film_ratings";
+    private final String findRatingByIdQuery = "SELECT id, name FROM film_ratings WHERE id = ?";
     private static final String existsGenreQuery = "SELECT COUNT(*) FROM film_genres WHERE id = ?";
     private static final String existsRatingQuery = "SELECT COUNT(*) FROM film_ratings WHERE id = ?";
     private static final String findAllLinkedQuery = "SELECT f.id, f.name AS film_name, f.description, f.realise_date, " +
@@ -68,23 +75,11 @@ public class FilmDbStorage extends BaseDbStorage<Film> implements FilmStorage {
 
     @Override
     public Collection<Film> getFilms(Integer size, Integer from, String sort) {
-        List<Film> films = findMany(findAllQuery).stream().toList();
-        setGenresForFilms(films);
-        if (size < 0) {
-            throw new ParameterNotValidException("size", "size must not be less than 0");
-        }
-        if (from < 0) {
-            throw new ParameterNotValidException("from", "from must not be less than 0");
-        }
-        if (sort.equals("asc")) {
-            List<Film> sortedFilms = films.stream()
-                    .sorted(Comparator.comparing(Film::getReleaseDate)).toList();
-            return sortedFilms.stream().skip(from).limit(size).toList();
-        } else if (sort.equals("desc")) {
-            List<Film> sortedFilms = films.stream()
-                    .sorted(Comparator.comparing(Film::getReleaseDate).reversed()).toList();
-            return sortedFilms.stream().skip(from).limit(size).toList();
-        } else if (sort.equals("like")) {
+
+        if (size < 0) throw new ParameterNotValidException("size", "size must not be less than 0");
+        if (from < 0) throw new ParameterNotValidException("from", "from must not be less than 0");
+
+        if ("like".equals(sort)) {
             List<Film> popularFilms = findMany(findAllLinkedQuery)
                     .stream()
                     .skip(from)
@@ -92,9 +87,22 @@ public class FilmDbStorage extends BaseDbStorage<Film> implements FilmStorage {
                     .toList();
             setGenresForFilms(popularFilms);
             return popularFilms;
-        } else {
-            return films.stream().skip(from).limit(size).toList();
         }
+
+        List<Film> films = new ArrayList<>(findMany(findAllQuery));
+        setGenresForFilms(films);
+
+        Comparator<Film> comparator = switch (sort.toLowerCase()) {
+            case "asc" -> Comparator.comparing(Film::getReleaseDate);
+            case "desc" -> Comparator.comparing(Film::getReleaseDate).reversed();
+            default -> Comparator.comparing(Film::getId);
+        };
+
+        return films.stream()
+                .sorted(comparator)
+                .skip(from)
+                .limit(size)
+                .toList();
     }
 
     @Override
@@ -194,8 +202,26 @@ public class FilmDbStorage extends BaseDbStorage<Film> implements FilmStorage {
     }
 
     @Override
+    public Optional<GenreDto> getGenreById(Integer id) {
+        try {
+            return Optional.ofNullable(jdbc.queryForObject(findGenreByIdQuery, new GenreMapper(), id));
+        } catch (EmptyResultDataAccessException e) {
+            return Optional.empty();
+        }
+    }
+
+    @Override
     public Collection<RatingDto> getRatings() {
         return jdbc.query(findRatingQuery, new RatingMapper());
+    }
+
+    @Override
+    public Optional<RatingDto> getRatingById(Integer id) {
+        try {
+            return Optional.ofNullable(jdbc.queryForObject(findRatingByIdQuery, new RatingMapper(), id));
+        } catch (EmptyResultDataAccessException e) {
+            return Optional.empty();
+        }
     }
 
     private void validateFilm(Film film) {
@@ -218,7 +244,6 @@ public class FilmDbStorage extends BaseDbStorage<Film> implements FilmStorage {
     }
 
     private void validateGenreAndRating(Film film) {
-        // Проверка жанров
         if (film.getGenres() != null) {
             for (GenreDto genre : film.getGenres()) {
                 Integer count = jdbc.queryForObject(
@@ -234,7 +259,6 @@ public class FilmDbStorage extends BaseDbStorage<Film> implements FilmStorage {
             }
         }
 
-        // Проверка рейтинга MPA
         if (film.getMpa() != null) {
             Integer count = jdbc.queryForObject(
                     existsRatingQuery,
@@ -261,35 +285,49 @@ public class FilmDbStorage extends BaseDbStorage<Film> implements FilmStorage {
                 .distinct()
                 .toList();
 
-        for (Integer genreId : genreIds) {
-            jdbc.update("INSERT INTO film_genre_binding(film_id, genre_id) VALUES (?, ?)",
-                    film.getId(), genreId);
-        }
+        jdbc.batchUpdate(
+                "INSERT INTO film_genre_binding(film_id, genre_id) VALUES (?, ?)",
+                new BatchPreparedStatementSetter() {
+                    @Override
+                    public void setValues(PreparedStatement ps, int i) throws SQLException {
+                        ps.setInt(1, film.getId());
+                        ps.setInt(2, genreIds.get(i));
+                    }
+
+                    @Override
+                    public int getBatchSize() {
+                        return genreIds.size();
+                    }
+                }
+        );
     }
 
     private void setGenresForFilms(Collection<Film> films) {
         if (films.isEmpty()) return;
 
-        List<Integer> ids = films.stream().map(Film::getId).toList();
+        Map<Integer, Film> filmsMap = films.stream()
+                .collect(Collectors.toMap(Film::getId, f -> f));
 
+        List<Integer> ids = new ArrayList<>(filmsMap.keySet());
+
+        String inSql = String.join(",", Collections.nCopies(ids.size(), "?"));
         String sql = "SELECT b.film_id, g.id AS genre_id, g.name AS genre_name " +
                 "FROM film_genre_binding b " +
                 "JOIN film_genres g ON b.genre_id = g.id " +
-                "WHERE b.film_id IN (" + String.join(",", Collections.nCopies(ids.size(), "?")) + ") " +
+                "WHERE b.film_id IN (" + inSql + ") " +
                 "ORDER BY g.id";
 
         jdbc.query(sql, (rs) -> {
             int filmId = rs.getInt("film_id");
             GenreDto genre = new GenreDto(rs.getInt("genre_id"), rs.getString("genre_name"));
 
-            films.stream()
-                    .filter(f -> f.getId() == filmId)
-                    .findFirst()
-                    .ifPresent(f -> {
-                        if (!f.getGenres().contains(genre)) {
-                            f.getGenres().add(genre);
-                        }
-                    });
+            Film film = filmsMap.get(filmId);
+            if (film != null) {
+                if (film.getGenres() == null) film.setGenres(new ArrayList<>());
+                if (!film.getGenres().contains(genre)) {
+                    film.getGenres().add(genre);
+                }
+            }
         }, ids.toArray());
     }
 

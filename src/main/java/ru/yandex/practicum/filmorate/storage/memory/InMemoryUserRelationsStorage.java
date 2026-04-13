@@ -49,7 +49,6 @@ public class InMemoryUserRelationsStorage implements RelationStorage {
 
     public List<Integer> getFriendIdsForUser(Integer userId) {
         return relations.stream()
-                //.filter(r -> r.getRelationStatus() == FriendshipStatus.CONFIRMED)
                 .filter(r -> Objects.equals(r.getUserId(), userId)
                         || Objects.equals(r.getAnotherUserId(), userId))
                 .map(r -> Objects.equals(r.getUserId(), userId) ? r.getAnotherUserId() : r.getUserId())

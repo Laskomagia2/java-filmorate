@@ -5,6 +5,7 @@ import ru.yandex.practicum.filmorate.dto.RatingDto;
 import ru.yandex.practicum.filmorate.model.Film;
 
 import java.util.Collection;
+import java.util.Optional;
 
 public interface FilmStorage {
     public Collection<Film> getFilms(Integer size, Integer from, String sort);
@@ -25,5 +26,9 @@ public interface FilmStorage {
 
     public Collection<GenreDto> getGenres();
 
+    public Optional<GenreDto> getGenreById(Integer id);
+
     public Collection<RatingDto> getRatings();
+
+    public Optional<RatingDto> getRatingById(Integer id);
 }

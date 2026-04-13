@@ -57,26 +57,20 @@ public class FilmService {
         filmStorage.removeFilm(id);
     }
 
-    public Collection<GenreDto> getGenres(Integer id) {
-        if (id == 0) return filmStorage.getGenres();
-
-        GenreDto genre = filmStorage.getGenres().stream()
-                .filter(g -> Objects.equals(g.getId(), id))
-                .findFirst()
-                .orElseThrow(() -> new NotFoundException("Жанр с id " + id + " не найден"));
-
-        return List.of(genre);
+    public Collection<GenreDto> getGenres() {
+        return filmStorage.getGenres();
     }
 
-    public Collection<RatingDto> getRating(Integer id) {
-        if (id == 0) return filmStorage.getRatings();
+    public GenreDto getGenreById(Integer id) {
+        return filmStorage.getGenreById(id).orElseThrow(() -> new NotFoundException("Genre with id " + id + " not found"));
+    }
 
-        RatingDto rating = filmStorage.getRatings().stream()
-                .filter(g -> Objects.equals(g.getId(), id))
-                .findFirst()
-                .orElseThrow(() -> new NotFoundException("Рейтинг с id " + id + " не найден"));
+    public Collection<RatingDto> getRatings() {
+        return filmStorage.getRatings();
+    }
 
-        return List.of(rating);
+    public RatingDto getRatingById(Integer id) {
+        return filmStorage.getRatingById(id).orElseThrow(() -> new NotFoundException("Rating with id " + id + " not found"));
     }
 
 }
