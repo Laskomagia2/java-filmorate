@@ -122,6 +122,16 @@ public class InMemoryFilmStorage implements FilmStorage {
     }
 
     @Override
+    public Optional<GenreDto> getGenreById(Integer id) {
+        Collection<GenreDto> result = new ArrayList<>();
+        List<String> genres = Arrays.stream(Genere.values()).map(Enum::toString).toList();
+        for (int idx = 0; idx < genres.size(); idx++) {
+            result.add(new GenreDto(idx + 1, genres.get(idx)));
+        }
+        return result.stream().filter(genreDto -> genreDto.getId().equals(id)).findFirst();
+    }
+
+    @Override
     public Collection<RatingDto> getRatings() {
         Collection<RatingDto> result = new ArrayList<>();
         List<String> genres = Arrays.stream(RatingMpa.values()).map(Enum::toString).toList();
@@ -129,6 +139,16 @@ public class InMemoryFilmStorage implements FilmStorage {
             result.add(new RatingDto(idx + 1, genres.get(idx)));
         }
         return result;
+    }
+
+    @Override
+    public Optional<RatingDto> getRatingById(Integer id) {
+        Collection<RatingDto> result = new ArrayList<>();
+        List<String> ratings = Arrays.stream(RatingMpa.values()).map(Enum::toString).toList();
+        for (int idx = 0; idx < ratings.size(); idx++) {
+            result.add(new RatingDto(idx + 1, ratings.get(idx)));
+        }
+        return result.stream().filter(ratingDto -> ratingDto.getId().equals(id)).findFirst();
     }
 
     private void validateFilm(Film film) {
