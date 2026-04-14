@@ -244,18 +244,18 @@ public class FilmDbStorage extends BaseDbStorage<Film> implements FilmStorage {
     }
 
     private void validateGenreAndRating(Film film) {
-        if (film.getGenres() != null) {
-            for (GenreDto genre : film.getGenres()) {
-                Integer count = jdbc.queryForObject(
-                        existsGenreQuery,
-                        Integer.class,
-                        genre.getId()
-                );
-                if (count == null || count == 0) {
-                    throw new NotFoundException(
-                            "Genre with id=" + genre.getId() + " not found"
-                    );
-                }
+        if (film.getGenres() != null && !film.getGenres().isEmpty()) {
+            Set<Integer> genreIds = film.getGenres().stream()
+                    .map(GenreDto::getId)
+                    .collect(Collectors.toSet());
+
+            String inSql = String.join(",", Collections.nCopies(genreIds.size(), "?"));
+            String sql = "SELECT COUNT(*) FROM film_genres WHERE id IN (" + inSql + ")";
+
+            Integer count = jdbc.queryForObject(sql, Integer.class, genreIds.toArray());
+
+            if (count == null || count < genreIds.size()) {
+                throw new NotFoundException("Один или несколько жанров не найдены");
             }
         }
 
