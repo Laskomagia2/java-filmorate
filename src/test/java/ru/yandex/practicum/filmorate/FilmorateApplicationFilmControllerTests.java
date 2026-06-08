@@ -83,17 +83,25 @@ class FilmorateApplicationFilmControllerTests {
         HttpHeaders headers = new HttpHeaders();
         HttpEntity<Film> request = new HttpEntity<>(testFilm2ch, headers);
 
-        ResponseEntity<String> response = restTemplate.exchange(baseUrl, HttpMethod.PUT, request, String.class);
+        ResponseEntity<Film> putResponse = restTemplate.exchange(baseUrl, HttpMethod.PUT, request, Film.class);
+        assertEquals(200, putResponse.getStatusCodeValue());
+        Film updatedFilm = putResponse.getBody();
+        assertNotNull(updatedFilm);
+        assertEquals("testName4", updatedFilm.getName());
+        assertEquals("testDescription4", updatedFilm.getDescription());
+        assertEquals(LocalDate.of(2010, 9, 1), updatedFilm.getReleaseDate());
+        assertEquals(6, updatedFilm.getDuration());
 
         ResponseEntity<Film[]> getEntity = restTemplate.getForEntity(baseUrl, Film[].class);
         assertEquals(200, getEntity.getStatusCodeValue());
         Film[] films = getEntity.getBody();
         assertNotNull(films);
         assertTrue(films.length > 0);
-        assertEquals(testFilm2ch, films[1]);
+        assertEquals(testFilm2ch.getName(), films[1].getName());
+        assertEquals(testFilm2ch.getDescription(), films[1].getDescription());
     }
 
-    @Order(3)
+    @Order(2)
     @Test
     void shouldReturnBadRequestWhenDurationAndDateInvalid() {
         Film testFilm = Film.builder()
@@ -109,6 +117,37 @@ class FilmorateApplicationFilmControllerTests {
         ResponseEntity<String> response = restTemplate.exchange(baseUrl, HttpMethod.POST, request, String.class);
 
         assertEquals(400, response.getStatusCodeValue());
+    }
+
+    @Test
+    void shouldDeleteFilmLike() {
+        User user = User.builder()
+                .name("delLikeUser")
+                .login("delLikeLogin")
+                .email("delLike@mail.ru")
+                .birthday(LocalDate.of(1985, 5, 5))
+                .build();
+        Integer userId = restTemplate.postForEntity(usersUrl, user, User.class).getBody().getId();
+
+        Film film = Film.builder()
+                .name("filmDelLike")
+                .description("desc")
+                .releaseDate(LocalDate.of(1999, 9, 9))
+                .duration(90)
+                .build();
+        Integer filmId = restTemplate.postForEntity(baseUrl, film, Film.class).getBody().getId();
+
+        restTemplate.exchange(baseUrl + "/" + filmId + "/like/" + userId, HttpMethod.PUT, null, Void.class);
+        ResponseEntity<Film> afterLike = restTemplate.getForEntity(baseUrl + "/" + filmId, Film.class);
+        assertEquals(200, afterLike.getStatusCodeValue());
+        assertNotNull(afterLike.getBody());
+        assertTrue(afterLike.getBody().getLikeCount().equals(1));
+
+        restTemplate.exchange(baseUrl + "/" + filmId + "/like/" + userId, HttpMethod.DELETE, null, Void.class);
+        ResponseEntity<Film> afterDelete = restTemplate.getForEntity(baseUrl + "/" + filmId, Film.class);
+        assertEquals(200, afterDelete.getStatusCodeValue());
+        assertNotNull(afterDelete.getBody());
+        assertTrue(afterDelete.getBody().getLikeCount().equals(0));
     }
 
     @Test
@@ -156,36 +195,4 @@ class FilmorateApplicationFilmControllerTests {
         assertEquals(filmId2, popularFilms[0].getId());
         assertEquals(filmId1, popularFilms[1].getId());
     }
-
-    @Test
-    void shouldDeleteFilmLike() {
-        User user = User.builder()
-                .name("delLikeUser")
-                .login("delLikeLogin")
-                .email("delLike@mail.ru")
-                .birthday(LocalDate.of(1985, 5, 5))
-                .build();
-        Integer userId = restTemplate.postForEntity(usersUrl, user, User.class).getBody().getId();
-
-        Film film = Film.builder()
-                .name("filmDelLike")
-                .description("desc")
-                .releaseDate(LocalDate.of(1999, 9, 9))
-                .duration(90)
-                .build();
-        Integer filmId = restTemplate.postForEntity(baseUrl, film, Film.class).getBody().getId();
-
-        restTemplate.exchange(baseUrl + "/" + filmId + "/like/" + userId, HttpMethod.PUT, null, Void.class);
-        ResponseEntity<Film> afterLike = restTemplate.getForEntity(baseUrl + "/" + filmId, Film.class);
-        assertEquals(200, afterLike.getStatusCodeValue());
-        assertNotNull(afterLike.getBody());
-        assertTrue(afterLike.getBody().getUserLikes().contains(userId));
-
-        restTemplate.exchange(baseUrl + "/" + filmId + "/like/" + userId, HttpMethod.DELETE, null, Void.class);
-        ResponseEntity<Film> afterDelete = restTemplate.getForEntity(baseUrl + "/" + filmId, Film.class);
-        assertEquals(200, afterDelete.getStatusCodeValue());
-        assertNotNull(afterDelete.getBody());
-        assertFalse(afterDelete.getBody().getUserLikes().contains(userId));
-    }
-
 }

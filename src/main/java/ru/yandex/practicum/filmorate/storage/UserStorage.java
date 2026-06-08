@@ -14,4 +14,9 @@ public interface UserStorage {
     public User putUser(User newUser);
 
     public void removeUser(Integer id);
+
+    public Collection<User> getFriends(Integer id);
+
+    public Collection<User> getMutualFriends(Integer userId, Integer friendId);
+
 }

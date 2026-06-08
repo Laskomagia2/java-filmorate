@@ -1,10 +1,12 @@
-package ru.yandex.practicum.filmorate.storage;
+package ru.yandex.practicum.filmorate.storage.memory;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import ru.yandex.practicum.filmorate.exceptions.NotFoundException;
 import ru.yandex.practicum.filmorate.exceptions.ValidationException;
 import ru.yandex.practicum.filmorate.model.User;
+import ru.yandex.practicum.filmorate.storage.UserStorage;
 
 import java.time.LocalDate;
 import java.util.*;
@@ -17,6 +19,12 @@ public class InMemoryUserStorage implements UserStorage {
     private final Map<Integer, User> users = new HashMap<>();
 
     private final AtomicInteger idCounter = new AtomicInteger(0);
+    private final InMemoryUserRelationsStorage relationsStorage;
+
+    @Autowired
+    public InMemoryUserStorage(InMemoryUserRelationsStorage relationsStorage) {
+        this.relationsStorage = relationsStorage;
+    }
 
     @Override
     public Collection<User> getUsers() {
@@ -62,6 +70,25 @@ public class InMemoryUserStorage implements UserStorage {
         users.remove(id);
     }
 
+    @Override
+    public Collection<User> getFriends(Integer id) {
+        getUserById(id);
+        return relationsStorage.getFriendIdsForUser(id).stream()
+                .map(this::getUserById)
+                .toList();
+    }
+
+    @Override
+    public Collection<User> getMutualFriends(Integer friendId, Integer userId) {
+        getUserById(friendId);
+        getUserById(userId);
+        Set<Integer> friendsOfUser = new HashSet<>(relationsStorage.getFriendIdsForUser(userId));
+        return relationsStorage.getFriendIdsForUser(friendId).stream()
+                .filter(friendsOfUser::contains)
+                .map(this::getUserById)
+                .toList();
+    }
+
     private void validateUser(User user) {
         if (user.getEmail().isBlank()) {
             log.error("Validation error: Email must not be empty");
@@ -88,9 +115,6 @@ public class InMemoryUserStorage implements UserStorage {
         }
         if (user.getName() == null) {
             user.setName(user.getLogin());
-        }
-        if (user.getFriendsId() == null) {
-            user.setFriendsId(new HashSet<>());
         }
         users.put(user.getId(), user);
         log.info("User id:{}, login: {} created",user.getId(), user.getLogin());

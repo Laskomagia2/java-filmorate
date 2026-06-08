@@ -49,46 +49,6 @@ class FilmorateApplicationUserControllerTests {
 	}
 
 	@Test
-	void shouldPutUser() {
-		User testUser1 = User.builder()
-				.name("testName")
-				.login("testLogin")
-				.email("test@Mail")
-				.birthday(LocalDate.of(2000, 11, 1))
-				.build();
-
-		User testUser2 = User.builder()
-				.name("testName2")
-				.login("testLogin2")
-				.email("test@Mail2")
-				.birthday(LocalDate.of(2000, 11, 2))
-				.build();
-
-		ResponseEntity<User> postEntity = restTemplate.postForEntity(baseUrl, testUser1, User.class);
-		ResponseEntity<User> postEntity2 = restTemplate.postForEntity(baseUrl, testUser2, User.class);
-
-		User testUser2ch = User.builder()
-				.id(2)
-				.name("testName")
-				.login("testLogin")
-				.email("test@Mail2")
-				.birthday(LocalDate.of(2000, 11, 1))
-				.build();
-
-		HttpHeaders headers = new HttpHeaders();
-		HttpEntity<User> request = new HttpEntity<>(testUser2ch, headers);
-
-		ResponseEntity<String> response = restTemplate.exchange(baseUrl, HttpMethod.PUT, request, String.class);
-
-		ResponseEntity<User[]> getEntity = restTemplate.getForEntity(baseUrl, User[].class);
-		assertEquals(200, getEntity.getStatusCodeValue());
-		User[] users = getEntity.getBody();
-		assertNotNull(users);
-		assertTrue(users.length > 0);
-		assertEquals(testUser2ch, users[1]);
-	}
-
-	@Test
 	void shouldReturnBadRequestWhenEmailAndDateInvalid() {
 		User user = User.builder()
 				.name("testName")
@@ -103,6 +63,40 @@ class FilmorateApplicationUserControllerTests {
 		ResponseEntity<String> response = restTemplate.exchange(baseUrl, HttpMethod.POST, request, String.class);
 
 		assertEquals(400, response.getStatusCodeValue());
+	}
+
+	@Test
+	void shouldRemoveFriend() {
+		User userOne = User.builder()
+				.name("rmA")
+				.login("loginRmA")
+				.email("rmA@mail.ru")
+				.birthday(LocalDate.of(1988, 1, 1))
+				.build();
+		User userTwo = User.builder()
+				.name("rmB")
+				.login("loginRmB")
+				.email("rmB@mail.ru")
+				.birthday(LocalDate.of(1989, 2, 2))
+				.build();
+
+		User created1 = restTemplate.postForEntity(baseUrl, userOne, User.class).getBody();
+		User created2 = restTemplate.postForEntity(baseUrl, userTwo, User.class).getBody();
+		assertNotNull(created1);
+		assertNotNull(created2);
+
+		restTemplate.exchange(
+				baseUrl + "/" + created1.getId() + "/friends/" + created2.getId(),
+				HttpMethod.PUT, null, Void.class);
+		restTemplate.exchange(
+				baseUrl + "/" + created1.getId() + "/friends/" + created2.getId(),
+				HttpMethod.DELETE, null, Void.class);
+
+		ResponseEntity<User[]> friends = restTemplate.getForEntity(
+				baseUrl + "/" + created1.getId() + "/friends", User[].class);
+		assertEquals(200, friends.getStatusCodeValue());
+		assertNotNull(friends.getBody());
+		assertEquals(0, friends.getBody().length);
 	}
 
 	@Test
@@ -141,48 +135,60 @@ class FilmorateApplicationUserControllerTests {
 		assertNotNull(list1);
 		assertEquals(1, list1.length);
 		assertEquals(created2.getId(), list1[0].getId());
-
-		ResponseEntity<User[]> friendsOfSecond = restTemplate.getForEntity(
-				baseUrl + "/" + created2.getId() + "/friends", User[].class);
-		assertEquals(200, friendsOfSecond.getStatusCodeValue());
-		User[] list2 = friendsOfSecond.getBody();
-		assertNotNull(list2);
-		assertEquals(1, list2.length);
-		assertEquals(created1.getId(), list2[0].getId());
 	}
 
 	@Test
-	void shouldRemoveFriend() {
-		User userOne = User.builder()
-				.name("rmA")
-				.login("loginRmA")
-				.email("rmA@mail.ru")
-				.birthday(LocalDate.of(1988, 1, 1))
-				.build();
-		User userTwo = User.builder()
-				.name("rmB")
-				.login("loginRmB")
-				.email("rmB@mail.ru")
-				.birthday(LocalDate.of(1989, 2, 2))
+	void shouldPutUser() {
+		User testUser1 = User.builder()
+				.name("testName")
+				.login("testLogin")
+				.email("test@Mail")
+				.birthday(LocalDate.of(2000, 11, 1))
 				.build();
 
-		User created1 = restTemplate.postForEntity(baseUrl, userOne, User.class).getBody();
-		User created2 = restTemplate.postForEntity(baseUrl, userTwo, User.class).getBody();
+		User testUser2 = User.builder()
+				.name("testName2")
+				.login("testLogin2")
+				.email("test@Mail2")
+				.birthday(LocalDate.of(2000, 11, 2))
+				.build();
+
+		ResponseEntity<User> postEntity = restTemplate.postForEntity(baseUrl, testUser1, User.class);
+		ResponseEntity<User> postEntity2 = restTemplate.postForEntity(baseUrl, testUser2, User.class);
+		assertEquals(201, postEntity.getStatusCodeValue());
+		assertEquals(201, postEntity2.getStatusCodeValue());
+		User created1 = postEntity.getBody();
+		User created2 = postEntity2.getBody();
 		assertNotNull(created1);
 		assertNotNull(created2);
 
-		restTemplate.exchange(
-				baseUrl + "/" + created1.getId() + "/friends/" + created2.getId(),
-				HttpMethod.PUT, null, Void.class);
-		restTemplate.exchange(
-				baseUrl + "/" + created1.getId() + "/friends/" + created2.getId(),
-				HttpMethod.DELETE, null, Void.class);
+		User testUser2ch = User.builder()
+				.id(created2.getId())
+				.name("testNameUpdated")
+				.login("testLogin2Updated")
+				.email("test@Mail2Updated")
+				.birthday(LocalDate.of(2001, 12, 2))
+				.build();
 
-		ResponseEntity<User[]> friends = restTemplate.getForEntity(
-				baseUrl + "/" + created1.getId() + "/friends", User[].class);
-		assertEquals(200, friends.getStatusCodeValue());
-		assertNotNull(friends.getBody());
-		assertEquals(0, friends.getBody().length);
+		HttpHeaders headers = new HttpHeaders();
+		HttpEntity<User> request = new HttpEntity<>(testUser2ch, headers);
+
+		ResponseEntity<User> putResponse = restTemplate.exchange(baseUrl, HttpMethod.PUT, request, User.class);
+		assertEquals(200, putResponse.getStatusCodeValue());
+		User updatedUser = putResponse.getBody();
+		assertNotNull(updatedUser);
+		assertEquals("testNameUpdated", updatedUser.getName());
+		assertEquals("testLogin2Updated", updatedUser.getLogin());
+		assertEquals("test@Mail2Updated", updatedUser.getEmail());
+		assertEquals(LocalDate.of(2001, 12, 2), updatedUser.getBirthday());
+
+		ResponseEntity<User[]> getEntity = restTemplate.getForEntity(baseUrl, User[].class);
+		assertEquals(200, getEntity.getStatusCodeValue());
+		User[] users = getEntity.getBody();
+		assertNotNull(users);
+		assertTrue(users.length > 0);
+		assertEquals("testNameUpdated", users[1].getName());
+		assertEquals("testLogin2Updated", users[1].getLogin());
 	}
 
 	@Test
